@@ -1,6 +1,5 @@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { LEVEL_LABELS } from "@/utils/constants";
 import { cn } from "@/lib/utils";
 
 interface LevelRadioProps {
@@ -8,9 +7,13 @@ interface LevelRadioProps {
   onChange: (level: number) => void;
   disabled?: boolean;
   className?: string;
+  /** Custom label function; defaults to L1–L5 */
+  labelFn?: (level: number) => string;
 }
 
-export default function LevelRadio({ value, onChange, disabled, className }: LevelRadioProps) {
+const defaultLabel = (level: number) => `L${level}`;
+
+export default function LevelRadio({ value, onChange, disabled, className, labelFn = defaultLabel }: LevelRadioProps) {
   return (
     <RadioGroup
       value={String(value)}
@@ -22,7 +25,7 @@ export default function LevelRadio({ value, onChange, disabled, className }: Lev
         <div key={level} className="flex items-center gap-1">
           <RadioGroupItem value={String(level)} id={`level-${level}`} />
           <Label htmlFor={`level-${level}`} className="cursor-pointer font-normal">
-            {LEVEL_LABELS[level]}
+            {labelFn(level)}
           </Label>
         </div>
       ))}

@@ -8,12 +8,16 @@ export function parseLevel(level: string | number): number {
 }
 
 export const LEVEL_LABELS: Record<number, string> = {
-  1: "L1",
-  2: "L2",
-  3: "L3",
-  4: "L4",
-  5: "L5",
+  1: "Pemula",
+  2: "Dasar",
+  3: "Menengah",
+  4: "Mahir",
+  5: "Ahli",
 };
+
+export function getLevelLabel(level: number): string {
+  return LEVEL_LABELS[level] ?? `L${level}`;
+}
 
 export const LEVEL_DESCRIPTIONS: Record<number, string> = {
   1: "Foundational",
