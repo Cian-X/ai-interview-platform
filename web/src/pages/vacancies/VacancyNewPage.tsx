@@ -15,7 +15,7 @@ import SkillPicker from "@/components/assessment/SkillPicker";
 import { vacanciesApi } from "@/services/vacancies";
 import { ArrowLeft, Plus, X, Loader2 } from "lucide-react";
 import type { VacancySkill } from "@/types";
-import { getLevelLabel } from "@/utils/constants";
+import { getLevelLabel, getLevelDescriptionId } from "@/utils/constants";
 
 interface VacancyFormValues {
   role_title: string;
@@ -131,7 +131,7 @@ export default function VacancyNewPage() {
                     <LevelRadio
                       value={watch(`skills.${index}.expected_level`) ?? 3}
                       onChange={(v) => setValue(`skills.${index}.expected_level`, v)}
-                      labelFn={getLevelLabel}
+                      labelFn={getLevelLabel} descriptionFn={getLevelDescriptionId}
                     />
                   </div>
                 </div>

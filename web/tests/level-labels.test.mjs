@@ -22,3 +22,20 @@ test("F-04: proficiency labels use Indonesian only for vacancy form", () => {
   assert.match(readFileSync(new URL("../src/components/assessment/SkillCard.tsx", import.meta.url), "utf8"), /<LevelRadio/);
   assert.match(readFileSync(new URL("../src/components/assessment/LevelRadio.tsx", import.meta.url), "utf8"), /`L\$\{level\}`/);
 });
+
+test("Vacancy level options show Indonesian one-line descriptions", () => {
+  const descBlock = source.match(/export const LEVEL_DESCRIPTIONS_ID[^=]*=\s*\{([^}]+)\}/)?.[1] ?? "";
+  const descs = Object.fromEntries([...descBlock.matchAll(/(\d):\s*"([^"]+)"/g)].map((m) => [Number(m[1]), m[2]]));
+  assert.deepEqual(descs, {
+    1: "Baru mengenal skill ini, masih perlu banyak panduan.",
+    2: "Bisa mengerjakan tugas sederhana dengan panduan.",
+    3: "Bisa mengerjakan secara mandiri.",
+    4: "Bisa menangani tugas kompleks dan membimbing orang lain.",
+    5: "Penguasaan mendalam, menjadi rujukan untuk skill ini.",
+  });
+  for (const page of ["../src/pages/vacancies/VacancyNewPage.tsx", "../src/pages/vacancies/VacancyEditPage.tsx"]) {
+    const pageSource = readFileSync(new URL(page, import.meta.url), "utf8");
+    assert.match(pageSource, /descriptionFn=\{getLevelDescriptionId\}/);
+  }
+  assert.match(readFileSync(new URL("../src/components/assessment/LevelRadio.tsx", import.meta.url), "utf8"), /descriptionFn\?:/);
+});

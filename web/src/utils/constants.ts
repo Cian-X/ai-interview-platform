@@ -19,6 +19,18 @@ export function getLevelLabel(level: number): string {
   return LEVEL_LABELS[level] ?? `L${level}`;
 }
 
+export const LEVEL_DESCRIPTIONS_ID: Record<number, string> = {
+  1: "Baru mengenal skill ini, masih perlu banyak panduan.",
+  2: "Bisa mengerjakan tugas sederhana dengan panduan.",
+  3: "Bisa mengerjakan secara mandiri.",
+  4: "Bisa menangani tugas kompleks dan membimbing orang lain.",
+  5: "Penguasaan mendalam, menjadi rujukan untuk skill ini.",
+};
+
+export function getLevelDescriptionId(level: number): string {
+  return LEVEL_DESCRIPTIONS_ID[level] ?? "";
+}
+
 export const LEVEL_DESCRIPTIONS: Record<number, string> = {
   1: "Foundational",
   2: "Functional",
