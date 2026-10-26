@@ -41,11 +41,14 @@ export default function VacancyEditPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { register, handleSubmit, control, setValue, watch, reset } = useForm<VacancyFormValues>({
+  const { register, handleSubmit, control, setValue, setError: setFieldError, watch, reset, formState: { errors } } = useForm<VacancyFormValues>({
     defaultValues: { role_title: "", culture_dimensions: "", competency_expectations: "", location: "", experience_level: "", experience_years_min: "", experience_years_max: "", work_arrangement: "", employment_type: "", minimum_education: "", salary_min: "", salary_max: "", skills: [] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "skills" });
+  const getCounterClass = (value: string = "") => value.length > 500 ? "text-destructive" : value.length >= 450 ? "text-amber-600" : "text-muted-foreground";
+  const validateSalaryMax = (value: string) => !value || !watch("salary_min") || Number(value) >= Number(watch("salary_min")) || "Maximum salary must be greater than or equal to minimum salary.";
 
   useEffect(() => {
     vacanciesApi.get(Number(id)).then((res) => {
@@ -71,8 +74,9 @@ export default function VacancyEditPage() {
   }, [id, reset]);
 
   const onSubmit = async (data: VacancyFormValues) => {
+    setSubmitError(null);
     const roleTitle = data.role_title === CUSTOM_ROLE_VALUE ? data.role_title_custom?.trim() : data.role_title;
-    if (!roleTitle) return;
+    if (!roleTitle) { setFieldError("role_title", { type: "required", message: "Choose or enter a role title." }); return; }
     setSubmitting(true);
     try {
       await vacanciesApi.update(Number(id), {
@@ -91,6 +95,15 @@ export default function VacancyEditPage() {
         vacancy_skills_attributes: data.skills,
       });
       navigate("/vacancies");
+    } catch (e: any) {
+      const apiErrors = e?.response?.data?.errors ?? [];
+      const salaryError = apiErrors.find((item: any) => ["salary_min", "salary_max"].includes(item?.field) || /salary (min|max)/i.test(item?.message ?? ""));
+      if (salaryError) {
+        const field = (salaryError.field ?? (/salary min/i.test(salaryError.message) ? "salary_min" : "salary_max")) as "salary_min" | "salary_max";
+        setFieldError(field, { type: "server", message: salaryError.message });
+      } else {
+        setSubmitError(apiErrors[0]?.message ?? "Failed to save vacancy.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -106,7 +119,7 @@ export default function VacancyEditPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <RoleTitleField register={register as any} setValue={setValue as any} watch={watch as any} />
+        <RoleTitleField register={register as any} setValue={setValue as any} watch={watch as any} error={errors.role_title?.message} />
         <div className="grid gap-4 sm:grid-cols-3">
           <div><Label htmlFor="experience_level">Experience level</Label><select id="experience_level" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" {...register("experience_level")}><option value="">Not specified</option><option value="intern">Intern</option><option value="associate">Associate</option><option value="mid">Mid-level</option><option value="senior">Senior</option><option value="lead">Lead</option></select></div>
           <div><Label htmlFor="experience_years_min">Experience from (years)</Label><Input id="experience_years_min" type="number" min="0" placeholder="0" {...register("experience_years_min")} /></div>
@@ -123,7 +136,7 @@ export default function VacancyEditPage() {
         </section>
         <Separator />
         <div className="space-y-3">
-          <Label>Expected skills</Label>
+          <Label>Expected skills <span className="text-destructive">*</span></Label>
           {fields.map((field, index) => (
             <div key={field.id} className="border rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
@@ -138,22 +151,25 @@ export default function VacancyEditPage() {
           </Button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <SalaryInput field="salary_min" label="Minimum salary" placeholder="0" register={register as any} setValue={setValue as any} watch={watch as any} />
-          <SalaryInput field="salary_max" label="Maximum salary" placeholder="-" register={register as any} setValue={setValue as any} watch={watch as any} />
+          <SalaryInput field="salary_min" label="Minimum salary" placeholder="0" register={register as any} setValue={setValue as any} watch={watch as any} error={errors.salary_min?.message} />
+          <SalaryInput field="salary_max" label="Maximum salary" placeholder="-" register={register as any} setValue={setValue as any} watch={watch as any} error={errors.salary_max?.message} validate={validateSalaryMax} />
         </div>
         <Separator />
         <div className="space-y-1.5">
           <Label htmlFor="culture_dimensions">Company culture</Label>
           <p className="text-xs text-muted-foreground">Describe the culture candidates should be evaluated against. Example: ownership-driven, async-first, direct feedback. Context for the AI narrative, not an instruction. Maximum 500 characters.</p>
-          <Textarea id="culture_dimensions" rows={3} maxLength={500} {...register("culture_dimensions", { maxLength: { value: 500, message: "Use 500 characters or fewer." } })} />
-          <p className="text-xs text-muted-foreground">{watch("culture_dimensions")?.length ?? 0}/500 characters</p>
+          <Textarea id="culture_dimensions" rows={3} aria-invalid={Boolean(errors.culture_dimensions)} className={errors.culture_dimensions ? "border-destructive focus-visible:ring-destructive" : undefined} {...register("culture_dimensions", { maxLength: { value: 500, message: "Use 500 characters or fewer." } })} />
+          <p className={`text-xs ${getCounterClass(watch("culture_dimensions"))}`}>{watch("culture_dimensions")?.length ?? 0}/500 characters</p>
+          {errors.culture_dimensions && <p role="alert" className="text-xs text-destructive">{errors.culture_dimensions.message}</p>}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="competency_expectations">Competency expectations</Label>
           <p className="text-xs text-muted-foreground">Describe the competencies expected for this role. Context for the AI narrative, not an instruction. Maximum 500 characters.</p>
-          <Textarea id="competency_expectations" rows={3} maxLength={500} {...register("competency_expectations", { maxLength: { value: 500, message: "Use 500 characters or fewer." } })} />
-          <p className="text-xs text-muted-foreground">{watch("competency_expectations")?.length ?? 0}/500 characters</p>
+          <Textarea id="competency_expectations" rows={3} aria-invalid={Boolean(errors.competency_expectations)} className={errors.competency_expectations ? "border-destructive focus-visible:ring-destructive" : undefined} {...register("competency_expectations", { maxLength: { value: 500, message: "Use 500 characters or fewer." } })} />
+          <p className={`text-xs ${getCounterClass(watch("competency_expectations"))}`}>{watch("competency_expectations")?.length ?? 0}/500 characters</p>
+          {errors.competency_expectations && <p role="alert" className="text-xs text-destructive">{errors.competency_expectations.message}</p>}
         </div>
+        {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => navigate("/vacancies")}>Cancel</Button>
           <Button type="submit" disabled={submitting}>{submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Save Changes</Button>

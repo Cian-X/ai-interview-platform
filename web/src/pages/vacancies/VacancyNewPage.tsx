@@ -38,9 +38,9 @@ export default function VacancyNewPage() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { register, handleSubmit, control, setValue, watch, formState: { errors } } = useForm<VacancyFormValues>({
+  const { register, handleSubmit, control, setValue, setError: setFieldError, watch, formState: { errors } } = useForm<VacancyFormValues>({
     defaultValues: {
       role_title: "", culture_dimensions: "", competency_expectations: "", location: "", experience_level: "", experience_years_min: "", experience_years_max: "",
       work_arrangement: "", employment_type: "", minimum_education: "", salary_min: "", salary_max: "", skills: [],
@@ -48,13 +48,15 @@ export default function VacancyNewPage() {
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: "skills" });
+  const getCounterClass = (value: string = "") => value.length > 500 ? "text-destructive" : value.length >= 450 ? "text-amber-600" : "text-muted-foreground";
+  const validateSalaryMax = (value: string) => !value || !watch("salary_min") || Number(value) >= Number(watch("salary_min")) || "Maximum salary must be greater than or equal to minimum salary.";
 
   const onSubmit = async (data: VacancyFormValues) => {
-    setError(null);
+    setSubmitError(null);
     setSubmitting(true);
     try {
       const roleTitle = data.role_title === CUSTOM_ROLE_VALUE ? data.role_title_custom?.trim() : data.role_title;
-      if (!roleTitle) { setError("Enter a role title."); setSubmitting(false); return; }
+      if (!roleTitle) { setFieldError("role_title", { type: "required", message: "Choose or enter a role title." }); setSubmitting(false); return; }
       await vacanciesApi.create({
         role_title: roleTitle,
         culture_dimensions: data.culture_dimensions,
@@ -72,7 +74,14 @@ export default function VacancyNewPage() {
       });
       navigate("/vacancies");
     } catch (e: any) {
-      setError(e?.response?.data?.errors?.[0]?.message ?? "Failed to save vacancy.");
+      const apiErrors = e?.response?.data?.errors ?? [];
+      const salaryError = apiErrors.find((item: any) => ["salary_min", "salary_max"].includes(item?.field) || /salary (min|max)/i.test(item?.message ?? ""));
+      if (salaryError) {
+        const field = (salaryError.field ?? (/salary min/i.test(salaryError.message) ? "salary_min" : "salary_max")) as "salary_min" | "salary_max";
+        setFieldError(field, { type: "server", message: salaryError.message });
+      } else {
+        setSubmitError(apiErrors[0]?.message ?? "Failed to save vacancy.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -90,7 +99,7 @@ export default function VacancyNewPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <RoleTitleField register={register as any} setValue={setValue as any} watch={watch as any} />
+        <RoleTitleField register={register as any} setValue={setValue as any} watch={watch as any} error={errors.role_title?.message} />
         <div className="grid gap-4 sm:grid-cols-3">
           <div><Label htmlFor="experience_level">Experience level</Label><select id="experience_level" className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm" {...register("experience_level")}><option value="">Not specified</option><option value="intern">Intern</option><option value="associate">Associate</option><option value="mid">Mid-level</option><option value="senior">Senior</option><option value="lead">Lead</option></select></div>
           <div><Label htmlFor="experience_years_min">Experience from (years)</Label><Input id="experience_years_min" type="number" min="0" placeholder="0" {...register("experience_years_min")} /></div>
@@ -145,8 +154,8 @@ export default function VacancyNewPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <SalaryInput field="salary_min" label="Minimum salary" placeholder="0" register={register as any} setValue={setValue as any} watch={watch as any} />
-          <SalaryInput field="salary_max" label="Maximum salary" placeholder="-" register={register as any} setValue={setValue as any} watch={watch as any} />
+          <SalaryInput field="salary_min" label="Minimum salary" placeholder="0" register={register as any} setValue={setValue as any} watch={watch as any} error={errors.salary_min?.message} />
+          <SalaryInput field="salary_max" label="Maximum salary" placeholder="-" register={register as any} setValue={setValue as any} watch={watch as any} error={errors.salary_max?.message} validate={validateSalaryMax} />
         </div>
 
         <Separator />
@@ -158,10 +167,12 @@ export default function VacancyNewPage() {
             id="culture_dimensions"
             placeholder="Ownership-driven, async-first, direct feedback culture..."
             rows={3}
-            maxLength={500}
+            aria-invalid={Boolean(errors.culture_dimensions)}
+            className={errors.culture_dimensions ? "border-destructive focus-visible:ring-destructive" : undefined}
             {...register("culture_dimensions", { maxLength: { value: 500, message: "Use 500 characters or fewer." } })}
           />
-          <p className="text-xs text-muted-foreground">{watch("culture_dimensions")?.length ?? 0}/500 characters</p>
+          <p className={`text-xs ${getCounterClass(watch("culture_dimensions"))}`}>{watch("culture_dimensions")?.length ?? 0}/500 characters</p>
+          {errors.culture_dimensions && <p role="alert" className="text-xs text-destructive">{errors.culture_dimensions.message}</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -171,13 +182,15 @@ export default function VacancyNewPage() {
             id="competency_expectations"
             placeholder="Strong communicator who can align cross-functional teams..."
             rows={3}
-            maxLength={500}
+            aria-invalid={Boolean(errors.competency_expectations)}
+            className={errors.competency_expectations ? "border-destructive focus-visible:ring-destructive" : undefined}
             {...register("competency_expectations", { maxLength: { value: 500, message: "Use 500 characters or fewer." } })}
           />
-          <p className="text-xs text-muted-foreground">{watch("competency_expectations")?.length ?? 0}/500 characters</p>
+          <p className={`text-xs ${getCounterClass(watch("competency_expectations"))}`}>{watch("competency_expectations")?.length ?? 0}/500 characters</p>
+          {errors.competency_expectations && <p role="alert" className="text-xs text-destructive">{errors.competency_expectations.message}</p>}
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {submitError && <p role="alert" className="text-sm text-destructive">{submitError}</p>}
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => navigate("/vacancies")}>Cancel</Button>
