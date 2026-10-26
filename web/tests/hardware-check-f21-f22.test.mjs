@@ -16,12 +16,23 @@ test("F-22: camera is requested by default, not gated by env flag alone", () => 
   );
 });
 
-// F-22: Voice-only opt-out must be explicit
-test("F-22: explicit voice-only opt-out UI exists", () => {
+// Camera is a hard requirement: the voice-only opt-out was removed by a
+// deliberate acceptance change (camera active = interview prerequisite, like mic).
+test("Camera is a hard requirement: no voice-only opt-out path", () => {
   assert.ok(
-    hwCheck.includes("voice-only") || hwCheck.includes("voiceOnly") || hwCheck.includes("Voice-only") || hwCheck.includes("Skip camera"),
-    "HardwareCheck must offer an explicit voice-only opt-out path"
+    !hwCheck.includes("switchToVoiceOnly") && !hwCheck.includes("voiceOnly") && !hwCheck.includes("Skip camera"),
+    "No voice-only opt-out may remain: camera is a hard requirement"
   );
+  assert.match(hwCheck, /Camera is required\. The interview cannot start without an active camera/);
+});
+
+// Trial escape hatch: when the browser cannot record at all (MediaRecorder
+// missing), the trial step offers a skip instead of blocking forever. Mic and
+// camera checks still gate Start.
+test("Trial escape hatch when recording is unsupported", () => {
+  assert.match(hwCheck, /typeof MediaRecorder === "undefined"/);
+  assert.match(hwCheck, /trialUnsupported/);
+  assert.match(hwCheck, /Continue without trial recording/);
 });
 
 // F-22: Camera denial shows clear explanation
