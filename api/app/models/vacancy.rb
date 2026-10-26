@@ -26,7 +26,7 @@ class Vacancy < ApplicationRecord
                                  reject_if: :all_blank
 
   MAX_ROLE_TITLE_LENGTH = 100
-  MAX_NARRATIVE_LENGTH = 501
+  MAX_NARRATIVE_LENGTH = 500
 
   def salary_min_must_not_exceed_max
     return if salary_min.blank? || salary_max.blank? || salary_min <= salary_max
